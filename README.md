@@ -26,10 +26,10 @@ Home Assistant needs a "Post Office" to send emails. Below is the setup for Gmai
 3. Search for **App Passwords**. Create one named "Home Assistant" and copy the 16-character code.
 
 #### Step B: Add to Home Assistant
-Open your `configuration.yaml` file. Paste the following (replacing with your details):
+Open your `configuration.yaml` file. **Copy and paste the code below** (replacing with your details):
 
-notify:
-  - name: smtp_gmail
+
+- name: smtp_gmail
     platform: smtp
     server: "smtp.gmail.com"
     port: 587
@@ -89,3 +89,8 @@ If you set **Days to Wait** to `3` and **Check Time** to `11:00:00`:
 * **Day 3 at 11:00 AM:** If the helper shows no activity for 3 days, you get a **Phone Notification** with an "I'm Okay" button.
 * **Day 4 at 11:00 AM:** If you still haven't moved or pressed the button, the **Emergency Email** is sent to your contact.
 * **Resetting:** Any motion detected by your sensors or a press of the "I'm Okay" button resets the counter back to 0 days.
+
+* ## 📜 License
+MIT License - feel free to use and modify for your own projects.
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/desertdog)
