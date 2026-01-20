@@ -1,0 +1,174 @@
+blueprint:
+  name: "LifeSwitch: Wellness"
+  description: "Escalating wellness check. Monitors activity via sensors and escalates to email if the user does not respond to mobile alerts."
+  domain: automation
+  input:
+    motion_sensors:
+      name: Motion Sensors
+      description: "Select sensors that detect daily activity. (Example: binary_sensor.living_room_motion)"
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+            device_class: motion
+          multiple: true
+    activity_helper:
+      name: Last Activity Helper
+      description: "Select the Input Datetime helper you created. (Example: input_datetime.wellness_last_activity)"
+      selector:
+        entity:
+          filter:
+            domain: input_datetime
+    threshold_days:
+      name: Days to Wait
+      description: "Days of inactivity allowed before alerting. (Example: 3)"
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 14
+          unit_of_measurement: days
+    check_time:
+      name: Daily Check Time
+      description: "What time each day the check occurs. (Example: 11:00:00)"
+      default: "11:00:00"
+      selector:
+        time: {}
+    custom_title:
+      name: Notification Title
+      description: "Example: Wellness Check-In"
+      selector:
+        text:
+          multiline: false
+    custom_message:
+      name: Notification Message
+      description: "Example: No activity detected for {{ days }} days. Tap here to view your dashboard or press the button below to reset."
+      selector:
+        text:
+          multiline: true
+    custom_dashboard_path:
+      name: Dashboard Path
+      description: "Example: /dashboard/check-in"
+      selector:
+        text:
+          multiline: false
+    mobile_notify_service:
+      name: Notification Service
+      description: "Example: notify.mobile_app_phone"
+      selector:
+        text:
+          multiline: false
+    email_notify_service:
+      name: Email Notifier Service
+      description: "Example: notify.smtp_gmail"
+      selector:
+        text:
+          multiline: false
+    emergency_email_destination:
+      name: Emergency Email Address
+      description: "Example: your_emergency_contact@example.com"
+      selector:
+        text:
+          multiline: false
+
+mode: restart
+
+# Top level variables to handle input mapping for Jinja2 templates
+variables:
+  motion_entities: !input motion_sensors
+
+trigger:
+  # 1. The daily scheduled check
+  - platform: time
+    at: !input check_time
+    id: "daily_check"
+  # 2. Physical motion detected
+  - platform: state
+    entity_id: !input motion_sensors
+    to: "on"
+    id: "activity_detected"
+  # 3. Mobile app 'I am Okay' button press
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "RESET_WELLNESS"
+    id: "activity_detected"
+  # 4. Manual Dashboard event (for custom buttons)
+  - platform: event
+    event_type: "lifeswitch_reset"
+    id: "activity_detected"
+
+action:
+  - variables:
+      v_helper: !input activity_helper
+      v_phone: !input mobile_notify_service
+      v_threshold: !input threshold_days
+
+  - choose:
+      # --- RESET LOGIC ---
+      # If motion is seen or a button is pressed, update the 'Last Activity' helper to NOW.
+      - conditions:
+          - condition: trigger
+            id: "activity_detected"
+        sequence:
+          - service: input_datetime.set_datetime
+            target:
+              entity_id: "{{ v_helper }}"
+            data:
+              timestamp: "{{ as_timestamp(now()) }}"
+          # Optional: confirm to the user via phone that the reset worked
+          - if:
+              - condition: template
+                value_template: "{{ trigger.platform == 'event' }}"
+            then:
+              - service: "{{ v_phone }}"
+                data:
+                  message: "✅ Wellness check reset to 0 days."
+
+      # --- CHECK LOGIC ---
+      # Happens once a day at the specified check_time.
+      - conditions:
+          - condition: trigger
+            id: "daily_check"
+        sequence:
+          - variables:
+              last_activity: "{{ state_attr(v_helper, 'timestamp') | default(0) }}"
+              days_since: "{{ ((as_timestamp(now()) - last_activity) / 86400) | int }}"
+              v_title: !input custom_title
+              v_message: !input custom_message
+              v_path: !input custom_dashboard_path
+
+          - if:
+              - condition: template
+                value_template: "{{ days_since >= (v_threshold | int) }}"
+            then:
+              # STEP 1: Send Notification to the User's Phone
+              - service: "{{ v_phone }}"
+                data:
+                  title: "{{ v_title if v_title else 'Wellness Check-In' }}"
+                  message: >
+                    {% set base_msg = v_message if v_message else 'No activity detected for {{ days }} days.' %}
+                    {{ base_msg | replace('{{ days }}', days_since | string) }}
+                  data:
+                    clickAction: "{{ v_path if v_path else '/lovelace/0' }}"
+                    url: "{{ v_path if v_path else '/lovelace/0' }}"
+                    tag: "wellness-check"
+                    actions:
+                      - action: "RESET_WELLNESS"
+                        title: "✅ I'm Okay!"
+
+              # STEP 2: Escalate to Email if user is still unresponsive
+              # (Triggered if days_since is strictly greater than threshold)
+              - if:
+                  - condition: template
+                    value_template: "{{ days_since > (v_threshold | int) }}"
+                then:
+                  - service: !input email_notify_service
+                    data:
+                      title: "🚨 URGENT: LifeSwitch Wellness Alert"
+                      target: !input emergency_email_destination
+                      message: >
+                        This is an automated emergency message. 
+                        No activity has been detected at home for {{ days_since }} days.
+                        The user has not responded to mobile check-in alerts. 
+                        Please check on them immediately.
