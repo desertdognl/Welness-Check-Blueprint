@@ -1,109 +1,100 @@
-🛡️ LifeSwitch: Escalating Wellness Check
-A self-contained wellness monitoring system for Home Assistant. It monitors your daily activity via motion sensors. If you are inactive for a set number of days, it sends a notification to your phone. If you still don't respond, it automatically escalates to an emergency email for a loved one.
+# LifeSwitch: Wellness
 
-📋 Prerequisites
-Before installing the blueprint, you need to set up two things: a Helper (to track time) and an Email Service.
+## Description
 
-1. Create the Last Activity Helper
-This "Helper" acts like a clock that resets to zero every time you move or press the "I'm Okay" button.
+The LifeSwitch Wellness blueprint is an automation blueprint that monitors activity via sensors and escalates to email if the user does not respond to mobile alerts.
 
-Go to Settings > Devices & Services > Helpers.
+## Installation
 
-Click + Create Helper > Date and/or time.
+1. Copy the `wellness_check.yaml` file to your Home Assistant configuration directory.
 
-Name: Wellness Last Activity.
+2. Customize the input variables in the `wellness_check.yaml` file to fit your needs. You can find the input variables listed below.
 
-Icon: mdi:clock-check.
+## Input Variables
 
-Type: Select Date and time.
+### Motion Sensors
 
-Click Create.
+- **Name**: Motion Sensors
+- **Description**: Select sensors that detect daily activity. (Example: binary_sensor.living_room_motion)
+- **Type**: Entity selector (multiple)
 
-2. Set up the Email Service (SMTP)
-Home Assistant needs a "Post Office" to send emails. Below is the setup for Gmail.
+### Last Activity Helper
 
-Step A: Get a Google App Password
+- **Name**: Last Activity Helper
+- **Description**: Select the Input Datetime helper you created. (Example: input_datetime.wellness_last_activity)
+- **Type**: Entity selector
 
-Go to your Google Account Security.
+### Days to Wait
 
-Turn on 2-Step Verification.
+- **Name**: Days to Wait
+- **Description**: Days of inactivity allowed before alerting. (Example: 3)
+- **Type**: Number
+- **Default**: 3
+- **Unit of Measurement**: days
+- **Min**: 1
+- **Max**: 14
 
-Search for App Passwords. Create one named "Home Assistant" and copy the 16-character code.
+### Daily Check Time
 
-Step B: Add to Home Assistant
+- **Name**: Daily Check Time
+- **Description**: What time each day the check occurs. (Example: 11:00:00)
+- **Type**: Time
+- **Default**: 11:00:00
 
-Open your configuration.yaml file.
+### Notification Title
 
-Paste the following (replacing with your details):
+- **Name**: Notification Title
+- **Description**: Example: Wellness Check-In
+- **Type**: Text
 
-YAML
-notify:
-  - name: smtp_gmail
-    platform: smtp
-    server: "smtp.gmail.com"
-    port: 587
-    timeout: 15
-    sender: "your-email@gmail.com"
-    encryption: starttls
-    username: "your-email@gmail.com"
-    password: "xxxx xxxx xxxx xxxx" # Your 16-character App Password
-    recipient: "your-email@gmail.com"
+### Notification Message
 
-Save and Restart Home Assistant.
+- **Name**: Notification Message
+- **Description**: Example: No activity detected for {{ days }} days. Tap here to view your dashboard or press the button below to reset.
+- **Type**: Text (multiline)
 
-💡 Using other mail services? If you don't use Gmail, check the Official Home Assistant SMTP Documentation for settings like Outlook, iCloud, or Yahoo.
+### Dashboard Path
 
-🚀 Installation & Setup
-1. Import the Blueprint
-Copy the wellness_check.yaml file from this repository to your Home Assistant folder: /config/blueprints/automation/lifeswitch/.
+- **Name**: Dashboard Path
+- **Description**: Example: /dashboard/check-in
+- **Type**: Text
 
-Go to Settings > Automations & Scenes > Blueprints.
+### Notification Service
 
-Find LifeSwitch: Wellness v3 and click Create Automation.
+- **Name**: Notification Service
+- **Description**: Example: notify.mobile_app_phone
+- **Type**: Text
 
-2. Fill in the Fields
-The setup screen will ask for several inputs. Use these examples as a guide:
+### Emergency Email Address
 
-Motion Sensors: Select all sensors that detect you being home (e.g., Living Room, Hallway).
+- **Name**: Emergency Email Address
+- **Description**: Example: your_emergency_contact@example.com
+- **Type**: Text
 
-Last Activity Helper: Select the input_datetime.wellness_last_activity you created.
+## Usage
 
-Notification Title: Wellness Check-In
+1. Configure the input variables in the `wellness_check.yaml` file to fit your needs.
 
-Notification Message: No activity detected for {{ days }} days. Tap here to view your dashboard or press the button below to reset.
+2. Restart Home Assistant.
 
-Dashboard Path: /dashboard-main/wellness (The URL of your reset button).
+3. The blueprint will monitor activity via sensors and escalate to email if the user does not respond to mobile alerts.
 
-Notification Service: notify.mobile_app_your_phone_name
+## Troubleshooting
 
-Email Notifier Service: notify.smtp_gmail
+- If you are not receiving notifications, make sure that the motion sensors are working properly and that the input variables are correctly configured.
 
-Emergency Email Address: emergency_contact@example.com
+- If you are receiving notifications but they are not formatted correctly, make sure that the input variables are correctly configured and that the template syntax is correct.
 
-🛠️ Testing Your Setup
-It is vital to test that your phone and email alerts actually work before relying on them.
+- If you are not receiving emails, make sure that the email notifier service is correctly configured and that the emergency email address is correct.
 
-Step 1: Test the Email
-Go to Developer Tools > Actions.
+## Contributing
 
-Search for Notifications: Send a notification via smtp_gmail.
+Contributions are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue on the repository.
 
-Enter a test message and your email in the target field.
+If you would like to contribute code, please fork the repository and submit a pull request.
 
-Click Perform Action. If you receive the email, your "Post Office" is working!
 
-Step 2: Test the Reset Button
-Add the input_datetime.wellness_last_activity to your dashboard.
+## 📜 License
+MIT License - feel free to use and modify for your own projects.
 
-Create a button that calls the script or event lifeswitch_reset.
-
-Press the button. The time on your dashboard helper should instantly update to the current time.
-
-📖 How it Works (The Logic)
-If you set Days to Wait to 3 and Check Time to 11:00:00:
-
-Day 3 at 11:00 AM: If the helper shows no activity for 3 days, you get a Phone Notification with an "I'm Okay" button.
-
-Day 4 at 11:00 AM: If you still haven't moved or pressed the button, the Emergency Email is sent to your contact.
-
-Resetting: Any motion detected by your sensors or a press of the "I'm Okay" button resets the counter back to 0 days.
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/desertdog)
